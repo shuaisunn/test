@@ -1,8 +1,12 @@
 /*****************************************************************************************************************************/
 // imports
-var sha3 = require('sha3');
-var SHA3 = sha3.SHA3;
-var SHAKE = sha3.SHAKE;/*****************************************************************************************************************************/
+// 修改 1: 移除 ES6 解构赋值，改用普通属性访问
+var sha3Module = require('sha3');
+var SHA3 = sha3Module.SHA3;
+var SHAKE = sha3Module.SHAKE;
+var webcrypto = require('crypto').webcrypto;
+/*****************************************************************************************************************************/
+// 修改 2: 所有的 const 替换为 var
 var nttZetas = [
     2285, 2571, 2970, 1812, 1493, 1422, 287, 202, 3158, 622, 1577, 182, 962,
     2127, 1855, 1468, 573, 2004, 264, 383, 2500, 1458, 1727, 3199, 2648, 1017,
@@ -35,23 +39,28 @@ var paramsETA = 2;
 /*****************************************************************************************************************************/
 // CRYSTALS-KYBER JAVASCRIPT
 
+// 修改 3: 所有的 let 替换为 var
 // 1. KeyGen
-var KeyGen768 = function() {
-
+KeyGen768 = function() {
+    // IND-CPA keypair
     var indcpakeys = indcpaKeyGen();
 
     var pk = indcpakeys[0];
     var sk = indcpakeys[1];
 
+    // FO transform to make IND-CCA2
+
+    // get hash of pk
     var buffer1 = Buffer.from(pk);
     var hash1 = new SHA3(256);
     hash1.update(buffer1);
     var pkh = hash1.digest();
 
-    // ❗改：固定随机数
-    var rnd = new Array(32);
-    for (var i = 0; i < 32; i++) rnd[i] = 0;
+    // read 32 random values (0-255) into a 32 byte array
+    var rnd = new Uint8Array(32);
+    webcrypto.getRandomValues(rnd); // web api cryptographically strong random values
 
+    // concatenate to form IND-CCA2 private key: sk + pk + h(pk) + rnd
     for (var i = 0; i < pk.length; i++) {
         sk.push(pk[i]);
     }
@@ -62,45 +71,63 @@ var KeyGen768 = function() {
         sk.push(rnd[i]);
     }
 
-    return [pk, sk];
-};
+    var keys = new Array(2);
+    keys[0] = pk;
+    keys[1] = sk;
+    return keys;
+}
 /*****************************************************************************************************************************/
 // 2. Encrypt
-var Encrypt768 = function(pk) {
+Encrypt768 = function(pk) {
 
-    // ❗固定 m（不要随机）
-    var m = new Array(32);
-    for (var i = 0; i < 32; i++) m[i] = 0;
+    // random 32 bytes m
+    var m = new Uint8Array(32);
+    webcrypto.getRandomValues(m); // web api cryptographically strong random values
 
+    // hash m with SHA3-256
     var buffer1 = Buffer.from(m);
     var hash1 = new SHA3(256);
     hash1.update(buffer1);
     var mh = hash1.digest();
 
+    // hash pk with SHA3-256
     var buffer2 = Buffer.from(pk);
     var hash2 = new SHA3(256);
     hash2.update(buffer2);
     var pkh = hash2.digest();
 
+    // hash mh and pkh with SHA3-512
+    var buffer3 = Buffer.from(mh);
+    var buffer4 = Buffer.from(pkh);
     var hash3 = new SHA3(512);
-    hash3.update(Buffer.from(mh)).update(Buffer.from(pkh));
-    var kr = hash3.digest();
-
+    hash3.update(buffer3).update(buffer4);
+    var kr = new Uint8Array(hash3.digest());
     var kr1 = kr.slice(0, 32);
     var kr2 = kr.slice(32, 64);
 
+    // generate ciphertext c
     var c = indcpaEncrypt(pk, mh, kr2);
 
+    // hash ciphertext with SHA3-256
+    var buffer5 = Buffer.from(c);
     var hash4 = new SHA3(256);
-    hash4.update(Buffer.from(c));
+    hash4.update(buffer5);
     var ch = hash4.digest();
 
+    // hash kr1 and ch with SHAKE-256
+    var buffer6 = Buffer.from(kr1);
+    var buffer7 = Buffer.from(ch);
     var hash5 = new SHAKE(256);
-    hash5.update(Buffer.from(kr1)).update(Buffer.from(ch));
+    hash5.update(buffer6).update(buffer7);
     var ss = hash5.digest();
 
-    return [c, ss];
-};
+    // output (c, ss)
+    var result = new Array(2);
+    result[0] = c;
+    result[1] = ss;
+
+    return result;
+}
 /*****************************************************************************************************************************/
 // 3. Decrypt
 Decrypt768 = function(c, privateKey) {
@@ -143,7 +170,7 @@ Decrypt768 = function(c, privateKey) {
         var hash3 = new SHAKE(256);
         hash3.update(buffer4).update(buffer5);
         ss = hash3.digest();
-    } 
+    }
     else{
         // hash z and ch with SHAKE-256
         var buffer6 = Buffer.from(z);
@@ -162,7 +189,7 @@ function indcpaKeyGen() {
 
     // random bytes for seed
     var rnd = new Uint8Array(32);
-    for (var i = 0; i < 32; i++) rnd[i] = 0;
+    webcrypto.getRandomValues(rnd); // web api cryptographically strong random values
 
     // hash rnd with SHA3-512
     var buffer1 = Buffer.from(rnd);
@@ -219,7 +246,7 @@ function indcpaKeyGen() {
     for (var i = 0; i < paramsK; i++) {
         pk[i] = add(pk[i], e[i]);
     }
-    
+
     // barrett reduction
     for (var i = 0; i < paramsK; i++) {
         pk[i] = reduce(pk[i]);
@@ -227,7 +254,7 @@ function indcpaKeyGen() {
 
     // ENCODE KEYS
     var keys = new Array(2);
-    
+
     // PUBLIC KEY
     // turn polynomials into byte arrays
     keys[0] = [];
@@ -255,9 +282,6 @@ function indcpaKeyGen() {
     }
     return keys;
 }
-
-
-
 
 // indcpaEncrypt is the encryption function of the CPA-secure
 // public-key encryption scheme underlying Kyber.
@@ -311,7 +335,7 @@ function indcpaEncrypt(pk1, msg, coins) {
 
     // calculate A.r
     var u = new Array(paramsK);
-    for (i = 0; i < paramsK; i++) {
+    for (var i = 0; i < paramsK; i++) {
         u[i] = multiply(at[i], r);
     }
 
@@ -469,8 +493,6 @@ function polyReduce(r) {
     return r;
 }
 
-
-
 // generateMatrixA deterministically generates a matrix `A` (or the transpose of `A`)
 // from a seed. Entries of the matrix are polynomials that look uniformly random.
 // Performs rejection sampling on the output of an extendable-output function (XOF).
@@ -518,7 +540,7 @@ function generateMatrixA(seed, transposed) {
                 var missing = result1[0]; // here is additional mod q polynomial coefficients
                 var ctrn = result1[1]; // how many coefficients were accepted and are in the output
                 // starting at last position of output array from first sampling function until 256 is reached
-                for (var k = ctr; k < paramsN; k++) { 
+                for (var k = ctr; k < paramsN; k++) {
                     a[i][j][k] = missing[k-ctr]; // fill rest of array with the additional coefficients until full
                 }
                 ctr = ctr + ctrn; // update index
@@ -558,7 +580,7 @@ function indcpaRejUniform(buf, bufl, len) {
             ctr = ctr + 1;
         }
 
-        
+
     }
 
     var result = new Array(2);
@@ -597,7 +619,7 @@ function prf(l, key, nonce) {
 function byteopsCbd(buf) {
     var t, d;
     var a, b;
-    var r = new Array(384).fill(0); 
+    var r = new Array(384).fill(0);
     for (var i = 0; i < paramsN / 8; i++) {
         t = (byteopsLoad32(buf.slice(4 * i, buf.length)) >>> 0);
         d = ((t & 0x55555555) >>> 0);
@@ -630,7 +652,7 @@ function ntt(r) {
     var t;
     // 128, 64, 32, 16, 8, 4, 2
     for (var l = 128; l >= 2; l >>= 1) {
-        // 0, 
+        // 0,
         for (var start = 0; start < 256; start = j + l) {
             zeta = nttZetas[k];
             k = k + 1;
@@ -642,7 +664,7 @@ function ntt(r) {
                 r[j + l] = r[j] - t;
                 // add t back again to the opposite subsection
                 r[j] = r[j] + t;
-                
+
             }
         }
     }
@@ -794,7 +816,7 @@ function compress1(u) {
         for (var j = 0; j < paramsN / 4; j++) {
             for (var k = 0; k < 4; k++) {
                 // parse {0,...,3328} to {0,...,1023}
-                t[k] = (((u[i][4 * j + k] << 10) + paramsQ / 2) / paramsQ) & 0b1111111111;
+                t[k] = (((u[i][4 * j + k] << 10) + paramsQ / 2) / paramsQ) & 1023; // 修改 4: 移除了 0b1111111111 二进制字面量
             }
             // converts 4 12-bit coefficients {0,...,3328} to 5 8-bit bytes {0,...,255}
             // 48 bits down to 40 bits per block
@@ -816,7 +838,7 @@ function compress2(v) {
     var t = new Array(8);
     for (var i = 0; i < paramsN / 8; i++) {
         for (var j = 0; j < 8; j++) {
-            t[j] = byte(((v[8 * i + j] << 4) + paramsQ / 2) / paramsQ) & 0b1111;
+            t[j] = byte(((v[8 * i + j] << 4) + paramsQ / 2) / paramsQ) & 15; // 修改 5: 移除了 0b1111 二进制字面量
         }
         r[rr + 0] = t[0] | (t[1] << 4);
         r[rr + 1] = t[2] | (t[3] << 4);
@@ -885,35 +907,6 @@ function byte(n) {
     n = n % 256;
     return n;
 }
-
-/* 
-// not needed, just here for reference
-function int8(n){
-    var end = -128;
-    var start = 127;
-    
-    if( n >= end && n <= start){
-        return n;
-    }
-    if( n < end){
-        n = n+129;
-        n = n%256;
-        n = start + n;
-        return n;
-    }
-    if( n > start){
-        n = n-128;
-        n = n%256;
-        n = end + n;
-        return n;
-    }
-}
-
-function uint8(n){
-    n = n%256;
-    return n;
-}
-*/
 
 function int16(n) {
     var end = -32768;
@@ -987,6 +980,7 @@ function ArrayCompare(a, b) {
 function hexToDec(hexString) {
     return parseInt(hexString, 16);
 }
+
 // test run function
 Test768 = function(){
     // read values from PQCkemKAT_2400.rsp
@@ -1003,7 +997,7 @@ Test768 = function(){
     while (counter < textByLine.length){
         if (textByLine[counter][0] == 'c' && textByLine[counter][1] == 't'){
             var tmp = [];
-            for (j = 0; j < 1088; j++) {
+            for (var j = 0; j < 1088; j++) {
                 tmp[j] = hexToDec(textByLine[counter][2 * j + 5] + textByLine[counter][2 * j + 1 + 5]);
             }
             ct100.push(tmp);
@@ -1012,7 +1006,7 @@ Test768 = function(){
         }
         else if(textByLine[counter][0] == 's' && textByLine[counter][1] == 's'){
             var tmp = [];
-            for (j = 0; j < 32; j++) {
+            for (var j = 0; j < 32; j++) {
                 tmp[j] = hexToDec(textByLine[counter][2 * j + 5] + textByLine[counter][2 * j + 1 + 5]);
             }
             ss100.push(tmp);
@@ -1021,7 +1015,7 @@ Test768 = function(){
         }
         else if(textByLine[counter][0] == 's' && textByLine[counter][1] == 'k'){
             var tmp = [];
-            for (j = 0; j < 2400; j++) {
+            for (var j = 0; j < 2400; j++) {
                 tmp[j] = hexToDec(textByLine[counter][2 * j + 5] + textByLine[counter][2 * j + 1 + 5]);
             }
             sk100.push(tmp);
@@ -1082,8 +1076,7 @@ Test768 = function(){
 }
 
 // Export functions to index.js (entry point)
-module.exports = {
-    KeyGen768: KeyGen768,
-    Encrypt768: Encrypt768,
-    Decrypt768: Decrypt768
-};
+exports.KeyGen768 = KeyGen768;
+exports.Encrypt768 = Encrypt768;
+exports.Decrypt768 = Decrypt768;
+exports.Test768 = Test768;
