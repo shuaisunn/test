@@ -554,38 +554,42 @@ function generateMatrixA(seed, transposed) {
 // indcpaRejUniform runs rejection sampling on uniform random bytes
 // to generate uniform random integers modulo `Q`.
 function indcpaRejUniform(buf, bufl, len) {
-    var r = new Array(384).fill(0);
-    var val0, val1; // d1, d2 in kyber documentation
-    var pos = 0; // i
-    var ctr = 0; // j
+    var r = new Array(384);
+    var val0, val1;
+    var pos = 0;
+    var ctr = 0;
+    var i = 0;
+    var mask, mask2;
+    var tmp;
 
-    while (ctr < len && pos + 3 <= bufl) {
+    for (i = 0; i < 384; i++) {
+        r[i] = 0;
+    }
 
-        // compute d1 and d2
-        val0 = (uint16((buf[pos]) >> 0) | (uint16(buf[pos + 1]) << 8)) & 0xFFF;
-        val1 = (uint16((buf[pos + 1]) >> 4) | (uint16(buf[pos + 2]) << 4)) & 0xFFF;
+    while (pos + 3 <= bufl) {
 
-        // increment input buffer index by 3
+        val0 = ((buf[pos]) | (buf[pos + 1] << 8)) & 0xFFF;
+        val1 = ((buf[pos + 1] >> 4) | (buf[pos + 2] << 4)) & 0xFFF;
+
         pos = pos + 3;
 
-        // if d1 is less than 3329
-        if (val0 < paramsQ) {
-            // assign to d1
-            r[ctr] = val0;
-            // increment position of output array
-            ctr = ctr + 1;
-        }
-        if (ctr < len && val1 < paramsQ) {
-            r[ctr] = val1;
-            ctr = ctr + 1;
-        }
+        mask = (val0 - paramsQ) >> 31;
+        tmp = val0 & mask;
 
+        r[ctr] = r[ctr] ^ (tmp & ~(r[ctr] ^ tmp));
+        ctr = ctr + (mask & 1);
 
+        mask2 = (val1 - paramsQ) >> 31;
+        tmp = val1 & mask2;
+
+        r[ctr] = r[ctr] ^ (tmp & ~(r[ctr] ^ tmp));
+
+        ctr = ctr + ((mask2 & 1) & (((ctr - len) >> 31) & 1));
     }
 
     var result = new Array(2);
-    result[0] = r; // returns polynomial NTT representation
-    result[1] = ctr; // ideally should return 256
+    result[0] = r;
+    result[1] = ctr;
     return result;
 }
 
