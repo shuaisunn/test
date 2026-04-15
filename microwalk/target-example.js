@@ -24,6 +24,7 @@ function processTestcase(testcaseBuffer) {
 
     target.Decrypt768(c, sk);
 
+
 }
 
 // 严格使用 ES5 的键值对导出方式
