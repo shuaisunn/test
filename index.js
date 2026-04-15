@@ -1,3 +1,12 @@
+// index.js
+const kyber = require('./kyber512.js');
+global.kyber = kyber; // 注入全局
+
+// 后面原本的代码保持不变...
+
+
+
+
 function __MICROWALK_testcaseBegin(){}
 function __MICROWALK_testcaseEnd(){}
 

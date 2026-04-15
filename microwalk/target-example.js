@@ -3,8 +3,9 @@
  * @param {Buffer} testcaseBuffer
  */
 function processTestcase(testcaseBuffer) {
-    // 1. 将 require 移入函数内部，避免顶层初始化顺序问题
-    const kyber = require('../kyber512.js');
+    // 不再使用 require，直接尝试从全局变量访问
+    // 如果你在 index.js 里挂载了 global.kyber，这里就用 global.kyber
+    const target = global.kyber;
 
     const CIPHERTEXT_BYTES = 768;
     const SECRETKEY_BYTES = 1632;
@@ -18,15 +19,11 @@ function processTestcase(testcaseBuffer) {
     const sk = new Uint8Array(testcaseBuffer.slice(CIPHERTEXT_BYTES, EXPECTED_LENGTH));
 
     try {
-        // 2. 这里的 Decrypt512 必须和 kyber512.js 最后的 module.exports 里的名字完全对应
-        if (kyber && typeof kyber.Decrypt512 === 'function') {
-            kyber.Decrypt512(c, sk);
-        } else {
-            // 如果你在 kyber512.js 里直接导出了函数，尝试这个：
-            // Decrypt512(c, sk);
+        if (target && typeof target.Decrypt512 === 'function') {
+            target.Decrypt512(c, sk);
         }
     } catch (e) {
-        // 捕获解密异常
+        // 忽略解密异常
     }
 }
 
