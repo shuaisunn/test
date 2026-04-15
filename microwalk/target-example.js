@@ -20,14 +20,8 @@ function processTestcase(testcaseBuffer) {
     var c = new Uint8Array(testcaseBuffer.slice(0, CIPHERTEXT_BYTES));
     var sk = new Uint8Array(testcaseBuffer.slice(CIPHERTEXT_BYTES, EXPECTED_LENGTH));
 
-    try {
-        // 根据 ZeroLeak 论文，调用 Decrypt768 进行侧信道检测
-        if (target && typeof target.Decrypt768 === 'function') {
-            target.Decrypt768(c, sk);
-        }
-    } catch (e) {
-        // 捕获异常：喂入的随机数会导致 FO 变换校验失败抛出错误，必须捕获以保证分析继续
-    }
+    target.Decrypt768(c, sk);
+
 }
 
 // 严格使用 ES5 的键值对导出方式
