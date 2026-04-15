@@ -1,36 +1,34 @@
-var kyber = require('../kyber768.js'); // 改成你的路径
+/**
+ * Executes the given testcase.
+ * @param {Buffer} testcaseBuffer
+ */
+function processTestcase(testcaseBuffer) {
+    // 1. 严格遵守 ES5 语法，全篇使用 var
+    // 2. 继续使用 global 注入法绕过 Jalangi2 的模块加载限制
+    var target = global.kyber;
 
-// 固定 key（非常关键！）
-var keypair = kyber.KeyGen768();
-var pk = keypair[0];
-var sk = keypair[1];
+    // Kyber-768 的标准参数长度 (单位：字节)
+    var CIPHERTEXT_BYTES = 1088;
+    var SECRETKEY_BYTES = 2400;
+    var EXPECTED_LENGTH = CIPHERTEXT_BYTES + SECRETKEY_BYTES; // 总长 3488 字节
 
-function processTestcase(testcaseBuffer)
-{
-    // 1. 使用输入作为 message（让输入参与计算）
-    var msg = testcaseBuffer;
-
-    // 保证长度 32
-    if (msg.length < 32) {
-        var tmp = Buffer.alloc(32);
-        msg.copy(tmp);
-        msg = tmp;
-    } else {
-        msg = msg.slice(0, 32);
+    if (!testcaseBuffer || testcaseBuffer.length < EXPECTED_LENGTH) {
+        return;
     }
 
+    // 切分数据
+    var c = new Uint8Array(testcaseBuffer.slice(0, CIPHERTEXT_BYTES));
+    var sk = new Uint8Array(testcaseBuffer.slice(CIPHERTEXT_BYTES, EXPECTED_LENGTH));
 
-    // 2. Encrypt（这里内部 m 已固定，但结构仍参与）
-    var result = kyber.Encrypt768(pk);
-    var c = result[0];
-
-    // 3. Decrypt（核心：使用 secret）
-    var ss = kyber.Decrypt768(c, sk);
-
-    // 4. 防止被优化掉
-    if (!ss) {
-        throw new Error("Decryption failed");
+    try {
+        // 根据 ZeroLeak 论文，调用 Decrypt768 进行侧信道检测
+        if (target && typeof target.Decrypt768 === 'function') {
+            target.Decrypt768(c, sk);
+        }
+    } catch (e) {
+        // 捕获异常：喂入的随机数会导致 FO 变换校验失败抛出错误，必须捕获以保证分析继续
     }
 }
 
-module.exports = { processTestcase };
+// 严格使用 ES5 的键值对导出方式
+module.exports = { processTestcase: processTestcase };

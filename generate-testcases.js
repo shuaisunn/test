@@ -2,11 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-// 配置参数 (Kyber-512)
-const NUM_TESTCASES = 16; // 生成 16 个测试用例 (t0 到 t15)
-const CIPHERTEXT_BYTES = 768;
-const SECRETKEY_BYTES = 1632;
-const TOTAL_BYTES = CIPHERTEXT_BYTES + SECRETKEY_BYTES; // 2400
+// generate-testcases.js (部分修改)
+const NUM_TESTCASES = 16;
+const CIPHERTEXT_BYTES = 1088; // Kyber-768 密文长度
+const SECRETKEY_BYTES = 2400;  // Kyber-768 私钥长度
+const TOTAL_BYTES = CIPHERTEXT_BYTES + SECRETKEY_BYTES; // 3488
 
 // 目标文件夹路径
 const outputDir = path.join(__dirname, 'microwalk', 'testcases', 'target-example');
