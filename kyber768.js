@@ -791,7 +791,7 @@ function add(a, b) {
     var i = 0;
     var tmpA, tmpB;
 
-    for (i = 0; i < paramsN; i++) {
+    for (i = 0; i < 384; i++) {
         tmpA = a[i] | 0;
         tmpB = b[i] | 0;
         c[i] = (tmpA + tmpB) | 0;
