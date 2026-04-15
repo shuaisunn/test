@@ -22,7 +22,7 @@ function processTestcase(testcaseBuffer) {
     var c = new Uint8Array(testcaseBuffer.slice(0, CIPHERTEXT_BYTES));
     var sk = new Uint8Array(testcaseBuffer.slice(CIPHERTEXT_BYTES, EXPECTED_LENGTH));
 
-    target.Decrypt768(c, sk);
+    kyber.Decrypt768(c, sk);
 
 
 }
