@@ -17,7 +17,7 @@ jobs:
       
       - name: Run Microwalk analysis
         id: run_microwalk
-        uses: microwalk-project/microwalk-jalangi2-action@v4
+        uses: microwalk-project/microwalk-jalangi2-action@v1
         with:
           # Change this if the analysis script is not in a /microwalk directory
           analysis-script-directory: ${{ env.analysis_script_directory }}
