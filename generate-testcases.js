@@ -19,7 +19,7 @@ if (!fs.existsSync(outputDir)) {
 console.log(`准备生成 ${NUM_TESTCASES} 个测试用例，每个大小 ${TOTAL_BYTES} 字节...`);
 
 // 循环生成文件
-for (let i = 0; i < NUM_TESTCASES; i++) {
+for (var i = 0; i < NUM_TESTCASES; i++) {
     const filename = `t${i}.testcase`;
     const filepath = path.join(outputDir, filename);
 

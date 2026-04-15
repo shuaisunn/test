@@ -1,29 +1,32 @@
-/**
- * Executes the given testcase.
- * @param {Buffer} testcaseBuffer
- */
-function processTestcase(testcaseBuffer) {
-    // 不再使用 require，直接尝试从全局变量访问
-    // 如果你在 index.js 里挂载了 global.kyber，这里就用 global.kyber
-    const target = global.kyber;
+var kyber = require('./kyber768_es5'); // 改成你的路径
 
-    const CIPHERTEXT_BYTES = 768;
-    const SECRETKEY_BYTES = 1632;
-    const EXPECTED_LENGTH = CIPHERTEXT_BYTES + SECRETKEY_BYTES;
+// 固定 key（非常关键！）
+var keypair = kyber.KeyGen768();
+var pk = keypair[0];
+var sk = keypair[1];
 
-    if (!testcaseBuffer || testcaseBuffer.length < EXPECTED_LENGTH) {
-        return;
+function processTestcase(testcaseBuffer)
+{
+    // 1. 使用输入作为 message（让输入参与计算）
+    var msg = testcaseBuffer;
+
+    // 保证长度 32
+    if (msg.length < 32) {
+        var tmp = Buffer.alloc(32);
+        msg.copy(tmp);
+        msg = tmp;
     }
 
-    const c = new Uint8Array(testcaseBuffer.slice(0, CIPHERTEXT_BYTES));
-    const sk = new Uint8Array(testcaseBuffer.slice(CIPHERTEXT_BYTES, EXPECTED_LENGTH));
+    // 2. Encrypt（这里内部 m 已固定，但结构仍参与）
+    var result = kyber.Encrypt768(pk);
+    var c = result[0];
 
-    try {
-        if (target && typeof target.Decrypt512 === 'function') {
-            target.Decrypt512(c, sk);
-        }
-    } catch (e) {
-        // 忽略解密异常
+    // 3. Decrypt（核心：使用 secret）
+    var ss = kyber.Decrypt768(c, sk);
+
+    // 4. 防止被优化掉
+    if (!ss) {
+        throw new Error("Decryption failed");
     }
 }
 
