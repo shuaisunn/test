@@ -3,7 +3,7 @@
  * @param {Buffer} testcaseBuffer
  */
 
-const kyber = require('../kyber768');
+var kyber = require('../kyber768');
 
 function processTestcase(testcaseBuffer) {
     // 1. 严格遵守 ES5 语法，全篇使用 var
