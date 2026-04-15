@@ -559,8 +559,12 @@ function indcpaRejUniform(buf, bufl, len) {
     var pos = 0;
     var ctr = 0;
     var i = 0;
-    var mask, mask2;
-    var tmp;
+    var j = 0;
+
+    var mask0, mask1;
+    var accept0, accept1;
+    var idx;
+    var t;
 
     for (i = 0; i < 384; i++) {
         r[i] = 0;
@@ -573,18 +577,31 @@ function indcpaRejUniform(buf, bufl, len) {
 
         pos = pos + 3;
 
-        mask = (val0 - paramsQ) >> 31;
-        tmp = val0 & mask;
+        mask0 = ((paramsQ - 1 - val0) >> 31) & 1;
+        accept0 = mask0;
 
-        r[ctr] = r[ctr] ^ (tmp & ~(r[ctr] ^ tmp));
-        ctr = ctr + (mask & 1);
+        idx = ctr;
 
-        mask2 = (val1 - paramsQ) >> 31;
-        tmp = val1 & mask2;
+        t = r[idx];
+        r[idx] = t ^ ((val0 ^ t) & (-accept0));
+        ctr = ctr + accept0;
 
-        r[ctr] = r[ctr] ^ (tmp & ~(r[ctr] ^ tmp));
+        if (ctr >= len) {
+            ctr = len;
+        }
 
-        ctr = ctr + ((mask2 & 1) & (((ctr - len) >> 31) & 1));
+        mask1 = ((paramsQ - 1 - val1) >> 31) & 1;
+        accept1 = mask1;
+
+        idx = ctr;
+
+        t = r[idx];
+        r[idx] = t ^ ((val1 ^ t) & (-accept1));
+        ctr = ctr + accept1;
+
+        if (ctr >= len) {
+            ctr = len;
+        }
     }
 
     var result = new Array(2);
