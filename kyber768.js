@@ -753,7 +753,10 @@ function multiply(a, b) {
 // in the number-theoretic transform (NTT) domain.
 function polyBaseMulMontgomery(a, b) {
     var rx, ry;
-    for (var i = 0; i < paramsN / 4; i++) {
+    var i = 0;
+    var rx0, rx1, ry0, ry1;
+
+    for (i = 0; i < paramsN / 4; i++) {
         rx = nttBaseMul(
             a[4 * i + 0], a[4 * i + 1],
             b[4 * i + 0], b[4 * i + 1],
@@ -764,10 +767,16 @@ function polyBaseMulMontgomery(a, b) {
             b[4 * i + 2], b[4 * i + 3],
             -nttZetas[64 + i]
         );
-        a[4 * i + 0] = rx[0];
-        a[4 * i + 1] = rx[1];
-        a[4 * i + 2] = ry[0];
-        a[4 * i + 3] = ry[1];
+
+        rx0 = rx[0] | 0;
+        rx1 = rx[1] | 0;
+        ry0 = ry[0] | 0;
+        ry1 = ry[1] | 0;
+
+        a[4 * i + 0] = rx0;
+        a[4 * i + 1] = rx1;
+        a[4 * i + 2] = ry0;
+        a[4 * i + 3] = ry1;
     }
     return a;
 }
