@@ -2,10 +2,12 @@
  * Executes the given testcase.
  * @param {Buffer} testcaseBuffer
  */
+
+const kyber = require('../kyber768');
+
 function processTestcase(testcaseBuffer) {
     // 1. 严格遵守 ES5 语法，全篇使用 var
-    // 2. 继续使用 global 注入法绕过 Jalangi2 的模块加载限制
-    var target = global.kyber;
+    // 2. 继续使用 global 注入法绕过 Jalangi2 的模块加载限 var target = global.kyber;
 
     // Kyber-768 的标准参数长度 (单位：字节)
     var CIPHERTEXT_BYTES = 1088;
