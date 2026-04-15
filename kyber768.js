@@ -788,9 +788,15 @@ function nttBaseMul(a0, a1, b0, b1, zeta) {
 // adds two polynomials.
 function add(a, b) {
     var c = new Array(384);
-    for (var i = 0; i < paramsN; i++) {
-        c[i] = a[i] + b[i];
+    var i = 0;
+    var tmpA, tmpB;
+
+    for (i = 0; i < paramsN; i++) {
+        tmpA = a[i] | 0;
+        tmpB = b[i] | 0;
+        c[i] = (tmpA + tmpB) | 0;
     }
+
     return c;
 }
 
