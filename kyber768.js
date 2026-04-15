@@ -790,10 +790,15 @@ function add(a, b) {
     var c = new Array(384);
     var i = 0;
     var tmpA, tmpB;
+    var ai, bi;
 
     for (i = 0; i < 384; i++) {
-        tmpA = a[i] | 0;
-        tmpB = b[i] | 0;
+        ai = a[i] | 0;
+        bi = b[i] | 0;
+
+        tmpA = ai;
+        tmpB = bi;
+
         c[i] = (tmpA + tmpB) | 0;
     }
 
