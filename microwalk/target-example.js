@@ -1,4 +1,4 @@
-var kyber = require('./kyber768_es5'); // 改成你的路径
+var kyber = require('../kyber768.js'); // 改成你的路径
 
 // 固定 key（非常关键！）
 var keypair = kyber.KeyGen768();
@@ -15,7 +15,10 @@ function processTestcase(testcaseBuffer)
         var tmp = Buffer.alloc(32);
         msg.copy(tmp);
         msg = tmp;
+    } else {
+        msg = msg.slice(0, 32);
     }
+
 
     // 2. Encrypt（这里内部 m 已固定，但结构仍参与）
     var result = kyber.Encrypt768(pk);
