@@ -554,59 +554,38 @@ function generateMatrixA(seed, transposed) {
 // indcpaRejUniform runs rejection sampling on uniform random bytes
 // to generate uniform random integers modulo `Q`.
 function indcpaRejUniform(buf, bufl, len) {
-    var r = new Array(384);
-    var val0, val1;
-    var pos = 0;
-    var ctr = 0;
-    var i = 0;
-    var j = 0;
+    var r = new Array(384).fill(0);
+    var val0, val1; // d1, d2 in kyber documentation
+    var pos = 0; // i
+    var ctr = 0; // j
 
-    var mask0, mask1;
-    var accept0, accept1;
-    var idx;
-    var t;
+    while (ctr < len && pos + 3 <= bufl) {
 
-    for (i = 0; i < 384; i++) {
-        r[i] = 0;
-    }
+        // compute d1 and d2
+        val0 = (uint16((buf[pos]) >> 0) | (uint16(buf[pos + 1]) << 8)) & 0xFFF;
+        val1 = (uint16((buf[pos + 1]) >> 4) | (uint16(buf[pos + 2]) << 4)) & 0xFFF;
 
-    while (pos + 3 <= bufl) {
-
-        val0 = ((buf[pos]) | (buf[pos + 1] << 8)) & 0xFFF;
-        val1 = ((buf[pos + 1] >> 4) | (buf[pos + 2] << 4)) & 0xFFF;
-
+        // increment input buffer index by 3
         pos = pos + 3;
 
-        mask0 = ((paramsQ - 1 - val0) >> 31) & 1;
-        accept0 = mask0;
-
-        idx = ctr;
-
-        t = r[idx];
-        r[idx] = t ^ ((val0 ^ t) & (-accept0));
-        ctr = ctr + accept0;
-
-        if (ctr >= len) {
-            ctr = len;
+        // if d1 is less than 3329
+        if (val0 < paramsQ) {
+            // assign to d1
+            r[ctr] = val0;
+            // increment position of output array
+            ctr = ctr + 1;
+        }
+        if (ctr < len && val1 < paramsQ) {
+            r[ctr] = val1;
+            ctr = ctr + 1;
         }
 
-        mask1 = ((paramsQ - 1 - val1) >> 31) & 1;
-        accept1 = mask1;
 
-        idx = ctr;
-
-        t = r[idx];
-        r[idx] = t ^ ((val1 ^ t) & (-accept1));
-        ctr = ctr + accept1;
-
-        if (ctr >= len) {
-            ctr = len;
-        }
     }
 
     var result = new Array(2);
-    result[0] = r;
-    result[1] = ctr;
+    result[0] = r; // returns polynomial NTT representation
+    result[1] = ctr; // ideally should return 256
     return result;
 }
 
@@ -753,10 +732,7 @@ function multiply(a, b) {
 // in the number-theoretic transform (NTT) domain.
 function polyBaseMulMontgomery(a, b) {
     var rx, ry;
-    var i = 0;
-    var rx0, rx1, ry0, ry1;
-
-    for (i = 0; i < paramsN / 4; i++) {
+    for (var i = 0; i < paramsN / 4; i++) {
         rx = nttBaseMul(
             a[4 * i + 0], a[4 * i + 1],
             b[4 * i + 0], b[4 * i + 1],
@@ -767,16 +743,10 @@ function polyBaseMulMontgomery(a, b) {
             b[4 * i + 2], b[4 * i + 3],
             -nttZetas[64 + i]
         );
-
-        rx0 = rx[0] | 0;
-        rx1 = rx[1] | 0;
-        ry0 = ry[0] | 0;
-        ry1 = ry[1] | 0;
-
-        a[4 * i + 0] = rx0;
-        a[4 * i + 1] = rx1;
-        a[4 * i + 2] = ry0;
-        a[4 * i + 3] = ry1;
+        a[4 * i + 0] = rx[0];
+        a[4 * i + 1] = rx[1];
+        a[4 * i + 2] = ry[0];
+        a[4 * i + 3] = ry[1];
     }
     return a;
 }
@@ -797,20 +767,9 @@ function nttBaseMul(a0, a1, b0, b1, zeta) {
 // adds two polynomials.
 function add(a, b) {
     var c = new Array(384);
-    var i = 0;
-    var tmpA, tmpB;
-    var ai, bi;
-
-    for (i = 0; i < 384; i++) {
-        ai = a[i] | 0;
-        bi = b[i] | 0;
-
-        tmpA = ai;
-        tmpB = bi;
-
-        c[i] = (tmpA + tmpB) | 0;
+    for (var i = 0; i < paramsN; i++) {
+        c[i] = a[i] + b[i];
     }
-
     return c;
 }
 
@@ -950,8 +909,24 @@ function byte(n) {
 }
 
 function int16(n) {
-    var u = n & 65535;
-    return (u << 16) >> 16;
+    var end = -32768;
+    var start = 32767;
+
+    if (n >= end && n <= start) {
+        return n;
+    }
+    if (n < end) {
+        n = n + 32769;
+        n = n % 65536;
+        n = start + n;
+        return n;
+    }
+    if (n > start) {
+        n = n - 32768;
+        n = n % 65536;
+        n = end + n;
+        return n;
+    }
 }
 
 function uint16(n) {
@@ -1104,5 +1079,6 @@ Test768 = function(){
 module.exports = {
     KeyGen768,
     Encrypt768,
-    Decrypt768
+    Decrypt768,
+    Test768
 }
