@@ -909,24 +909,10 @@ function byte(n) {
 }
 
 function int16(n) {
-    var end = -32768;
-    var start = 32767;
-
-    if (n >= end && n <= start) {
-        return n;
-    }
-    if (n < end) {
-        n = n + 32769;
-        n = n % 65536;
-        n = start + n;
-        return n;
-    }
-    if (n > start) {
-        n = n - 32768;
-        n = n % 65536;
-        n = end + n;
-        return n;
-    }
+    // Force to 32-bit integer
+    n = n | 0;
+    // Convert to signed 16-bit in constant time
+    return (n << 16) >> 16;
 }
 
 function uint16(n) {
