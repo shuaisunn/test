@@ -555,37 +555,47 @@ function generateMatrixA(seed, transposed) {
 // to generate uniform random integers modulo `Q`.
 function indcpaRejUniform(buf, bufl, len) {
     var r = new Array(384).fill(0);
-    var val0, val1; // d1, d2 in kyber documentation
-    var pos = 0; // i
-    var ctr = 0; // j
+    var val0, val1;
+    var pos = 0;
+    var ctr = 0;
+
+    function ct_lt(a, b) {
+        return ((a - b) >> 31) & 1;
+    }
+
+    function ct_mask(bit) {
+        return -bit;
+    }
+
+    function ct_select(a, b, mask) {
+        return (a & (~mask)) | (b & mask);
+    }
 
     while (ctr < len && pos + 3 <= bufl) {
 
-        // compute d1 and d2
         val0 = (uint16((buf[pos]) >> 0) | (uint16(buf[pos + 1]) << 8)) & 0xFFF;
         val1 = (uint16((buf[pos + 1]) >> 4) | (uint16(buf[pos + 2]) << 4)) & 0xFFF;
 
-        // increment input buffer index by 3
         pos = pos + 3;
 
-        // if d1 is less than 3329
-        if (val0 < paramsQ) {
-            // assign to d1
-            r[ctr] = val0;
-            // increment position of output array
-            ctr = ctr + 1;
-        }
-        if (ctr < len && val1 < paramsQ) {
-            r[ctr] = val1;
-            ctr = ctr + 1;
-        }
+        var m0 = ct_lt(val0, paramsQ);
+        var idx0 = ctr;
+        var mask0 = ct_mask(m0);
+        r[idx0] = ct_select(r[idx0], val0, mask0);
+        ctr = ctr + m0;
 
-
+        var m1 = ct_lt(val1, paramsQ);
+        var mlen = ct_lt(ctr, len);
+        var m = m1 & mlen;
+        var idx1 = ctr;
+        var mask1 = ct_mask(m);
+        r[idx1] = ct_select(r[idx1], val1, mask1);
+        ctr = ctr + m;
     }
 
     var result = new Array(2);
-    result[0] = r; // returns polynomial NTT representation
-    result[1] = ctr; // ideally should return 256
+    result[0] = r;
+    result[1] = ctr;
     return result;
 }
 
