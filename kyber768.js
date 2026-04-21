@@ -558,7 +558,7 @@ function indcpaRejUniform(buf, bufl, len) {
     var val0, val1;
     var pos = 0;
     var ctr = 0;
-    var i;
+    var i, iter;
 
     function ct_lt(a, b) {
         return ((a - b) >> 31) & 1;
@@ -577,10 +577,19 @@ function indcpaRejUniform(buf, bufl, len) {
         return (a & (~mask)) | (b & mask);
     }
 
-    while (ctr < len && pos + 3 <= bufl) {
+    var max_iter = (bufl / 3) | 0;
 
-        val0 = (uint16((buf[pos]) >> 0) | (uint16(buf[pos + 1]) << 8)) & 0xFFF;
-        val1 = (uint16((buf[pos + 1]) >> 4) | (uint16(buf[pos + 2]) << 4)) & 0xFFF;
+    for (iter = 0; iter < max_iter; iter++) {
+
+        var valid_pos = ct_lt(pos + 2, bufl);
+        var pos_mask = ct_mask(valid_pos);
+
+        var b0 = buf[pos] & pos_mask;
+        var b1 = buf[pos + 1] & pos_mask;
+        var b2 = buf[pos + 2] & pos_mask;
+
+        val0 = (uint16((b0) >> 0) | (uint16(b1) << 8)) & 0xFFF;
+        val1 = (uint16((b1) >> 4) | (uint16(b2) << 4)) & 0xFFF;
 
         pos = pos + 3;
 
