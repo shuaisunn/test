@@ -558,6 +558,7 @@ function indcpaRejUniform(buf, bufl, len) {
     var val0, val1;
     var pos = 0;
     var ctr = 0;
+    var i;
 
     function ct_lt(a, b) {
         return ((a - b) >> 31) & 1;
@@ -565,6 +566,11 @@ function indcpaRejUniform(buf, bufl, len) {
 
     function ct_mask(bit) {
         return -bit;
+    }
+
+    function ct_eq(a, b) {
+        var x = a ^ b;
+        return ((x | -x) >> 31) ^ 1;
     }
 
     function ct_select(a, b, mask) {
@@ -579,17 +585,25 @@ function indcpaRejUniform(buf, bufl, len) {
         pos = pos + 3;
 
         var m0 = ct_lt(val0, paramsQ);
-        var mask0 = ct_mask(m0);
         var idx0 = ctr;
-        r[idx0] = ct_select(r[idx0], val0, mask0);
+
+        for (i = 0; i < r.length; i++) {
+            var eq0 = ct_eq(i, idx0);
+            var mask0 = ct_mask(m0 & eq0);
+            r[i] = ct_select(r[i], val0, mask0);
+        }
         ctr = ctr + m0;
 
         var m1 = ct_lt(val1, paramsQ);
         var mlen = ct_lt(ctr, len);
         var m = m1 & mlen;
-        var mask1 = ct_mask(m);
         var idx1 = ctr;
-        r[idx1] = ct_select(r[idx1], val1, mask1);
+
+        for (i = 0; i < r.length; i++) {
+            var eq1 = ct_eq(i, idx1);
+            var mask1 = ct_mask(m & eq1);
+            r[i] = ct_select(r[i], val1, mask1);
+        }
         ctr = ctr + m;
     }
 
